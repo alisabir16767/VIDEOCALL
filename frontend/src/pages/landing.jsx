@@ -1,23 +1,56 @@
 import React from "react";
+import "../App.css";
+import { Link, useNavigate } from "react-router-dom";
+export default function LandingPage() {
+  const router = useNavigate();
 
-export default function Landing() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <div className="max-w-2xl w-full bg-white p-8 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-extrabold text-gray-800 mb-4">
-          Welcome to the Landing Page
-        </h1>
-        <p className="text-gray-600 mb-2">
-          Here you can find all the information you need about the project.
-        </p>
-        <p className="text-gray-600 mb-4">
-          Here is a list of all the features:
-        </p>
-        <ul className="list-disc pl-5 space-y-1 text-gray-700">
-          <li>Feature 1</li>
-          <li>Feature 2</li>
-          <li>Feature 3</li>
-        </ul>
+    <div className="landingPageContainer">
+      <nav>
+        <div className="navHeader">
+          <h2>Face Call</h2>
+        </div>
+        <div className="navlist">
+          <p
+            onClick={() => {
+              router("/aljk23");
+            }}
+          >
+            Join as Guest
+          </p>
+          <p
+            onClick={() => {
+              router("/auth");
+            }}
+          >
+            Register
+          </p>
+          <div
+            onClick={() => {
+              router("/auth");
+            }}
+            role="button"
+          >
+            <p>Login</p>
+          </div>
+        </div>
+      </nav>
+
+      <div className="landingMainContainer">
+        <div>
+          <h1>
+            <span style={{ color: "#FF9839" }}>Connect</span> with your <br />{" "}
+            loved Ones
+          </h1>
+
+          <p>Cover a distance by Apna Video Call</p>
+          <div role="button">
+            <Link to={"/auth"}>Get Started</Link>
+          </div>
+        </div>
+        <div>
+          <img src="/mobile.png" alt="" />
+        </div>
       </div>
     </div>
   );
