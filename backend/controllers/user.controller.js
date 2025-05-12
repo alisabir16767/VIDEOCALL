@@ -32,29 +32,33 @@ export const login = asyncWrapper(async (req, res) => {
       message: "Invalid credentials",
     });
   }
+
   const user = await User.findOne({ username });
   if (!user) {
     return res.status(httpStatus.UNAUTHORIZED).json({
       message: "Invalid credentials",
     });
   }
+
   const isMatch = await bcrypt.compare(password, user.password);
-  if (isMatch) {
-    let token = crypto.randomBytes(64).toString("hex");
-    user.token = token;
-    await user.save();
-    res.status(httpStatus.OK).json({ token: token });
-    res.cookie("token", token, { httpOnly: true });
-  } else if (!isMatch) {
+  if (!isMatch) {
     return res.status(httpStatus.UNAUTHORIZED).json({
       message: "Invalid credentials",
     });
   }
+
+  const token = crypto.randomBytes(64).toString("hex");
+  user.token = token;
+  await user.save();
+
+  res.cookie("token", token, { httpOnly: true });
+
   return res.status(httpStatus.OK).json({
     message: "User logged in successfully",
+    token,
     user: {
       username: user.username,
-      email: user.email,
+      name: user.name,
     },
   });
 });

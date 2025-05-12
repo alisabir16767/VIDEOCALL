@@ -4,15 +4,16 @@ import {
   Button,
   CssBaseline,
   TextField,
-  FormControlLabel,
-  Checkbox,
   Paper,
   Box,
   Grid,
   Typography,
+  Snackbar,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { useContext } from "react";
+import { AuthContext } from "../contexts/AuthContext";
 
 const theme = createTheme();
 
@@ -24,6 +25,31 @@ export default function Authentication() {
   const [error, setError] = React.useState(null);
   const [formState, setFormState] = React.useState(0);
   const [open, setOpen] = React.useState(false);
+
+  const { handleRegister, handleLogin } = useContext(AuthContext);
+
+  const handleAuth = async (e) => {
+    e.preventDefault(); // Prevent default form submission
+    try {
+      if (formState === 0) {
+        await handleLogin(username, password);
+      } else {
+        const result = await handleRegister(name, username, password);
+        console.log(result);
+        setUsername("");
+        setPassword("");
+        setName("");
+        setMessage("Registration successful!");
+        setOpen(true);
+        setError(null);
+        setFormState(0);
+      }
+    } catch (err) {
+      console.log(err);
+      const message = err.response?.data?.message || "Something went wrong.";
+      setError(message);
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -42,11 +68,10 @@ export default function Authentication() {
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            height: "100%", // Full height of the parent container
-            width: "50%", // Full width of the parent container
           }}
         />
 
+        {/* Right Side - Form */}
         <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
           <Box
             sx={{
@@ -55,45 +80,42 @@ export default function Authentication() {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              width: "89.5vh",
+              width: "100%",
             }}
           >
             <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
               <LockOutlinedIcon />
             </Avatar>
-            <div>
+
+            <Box sx={{ mb: 2 }}>
               <Button
-                variant={formState === 0 ? "contained" : ""}
-                onClick={() => {
-                  setFormState(0);
-                }}
+                variant={formState === 0 ? "contained" : "outlined"}
+                sx={{ mr: 1 }}
+                onClick={() => setFormState(0)}
               >
                 Sign In
               </Button>
               <Button
-                variant={formState === 1 ? "contained" : ""}
-                onClick={() => {
-                  setFormState(1);
-                }}
+                variant={formState === 1 ? "contained" : "outlined"}
+                onClick={() => setFormState(1)}
               >
                 Sign Up
               </Button>
-            </div>
+            </Box>
+
             <Box component="form" noValidate sx={{ mt: 1 }}>
-              {formState === 1 ? (
+              {formState === 1 && (
                 <TextField
                   margin="normal"
                   required
                   fullWidth
-                  id="username"
+                  id="name"
                   label="Full Name"
-                  name="username"
+                  name="name"
                   value={name}
                   autoFocus
                   onChange={(e) => setName(e.target.value)}
                 />
-              ) : (
-                <></>
               )}
 
               <TextField
@@ -104,36 +126,43 @@ export default function Authentication() {
                 label="Username"
                 name="username"
                 value={username}
-                autoFocus
+                autoFocus={formState === 0}
                 onChange={(e) => setUsername(e.target.value)}
               />
+
               <TextField
                 margin="normal"
                 required
                 fullWidth
                 name="password"
                 label="Password"
-                value={password}
                 type="password"
-                onChange={(e) => setPassword(e.target.value)}
                 id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-              <FormControlLabel
-                control={<Checkbox value="remember" color="primary" />}
-                label="Remember me"
-              />
+
+              {error && <Typography color="error">{error}</Typography>}
+
               <Button
-                type="submit"
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
+                onClick={handleAuth}
               >
-                Sign In
+                {formState === 0 ? "Login" : "Register"}
               </Button>
             </Box>
           </Box>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={open}
+        autoHideDuration={6000}
+        onClose={() => setOpen(false)}
+        message={message}
+      />
     </ThemeProvider>
   );
 }

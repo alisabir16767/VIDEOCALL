@@ -43,7 +43,7 @@ export default function LandingPage() {
             loved Ones
           </h1>
 
-          <p>Cover a distance by Apna Video Call</p>
+          <p>Cover a distance by Face Call</p>
           <div role="button">
             <Link to={"/auth"}>Get Started</Link>
           </div>
