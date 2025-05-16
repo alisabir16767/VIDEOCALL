@@ -1,8 +1,7 @@
-/* Landing Page Container */
 .landingPageContainer {
   width: 100vw;
   height: 100vh;
-  background: url('../public/background.png');
+  background: url('../background.png');
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
@@ -11,7 +10,6 @@
   flex-direction: column;
 }
 
-/* Navigation Bar */
 .landingPageContainer nav {
   padding: 1.6rem 1.2rem;
   display: flex;
@@ -19,13 +17,11 @@
   align-items: center;
 }
 
-/* Navigation Header */
 .landingPageContainer nav h2 {
   font-size: 1.8rem;
   font-weight: 600;
 }
 
-/* Navigation Links */
 .landingPageContainer nav .navlist {
   display: flex;
   gap: 1.6rem;
@@ -42,7 +38,6 @@
   color: #FF9839;
 }
 
-/* Main Section */
 .landingMainContainer {
   display: flex;
   justify-content: space-between;
@@ -51,7 +46,6 @@
   flex: 1;
 }
 
-/* Left Text Content */
 .landingMainContainer > div:first-child {
   max-width: 50%;
 }

@@ -37,8 +37,11 @@ export const AuthProvider = ({ children }) => {
         username,
         password,
       });
+
       if (response.status === httpStatus.OK) {
-        setUser(response.data);
+        console.log("Token:", response.data.token); // ✅ Log token
+        localStorage.setItem("token", response.data.token); // ✅ Store token
+        setUser(response.data.user); // Set user only (not entire response)
         router("/");
       }
     } catch (err) {
