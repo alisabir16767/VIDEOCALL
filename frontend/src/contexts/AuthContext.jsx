@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 export const AuthContext = createContext({});
 
 const client = axios.create({
-  baseURL: "http://localhost:5000/api/v1/users",
+  baseURL: "http://localhost:3000/api/v1/users",
 });
 
 export const AuthProvider = ({ children }) => {
@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
         username,
         password,
       });
-      console.log("Token:", response.data.token); // ✅ Log token in console
+      console.log("Token:", response.data.token);
 
       if (response.status === httpStatus.OK) {
         localStorage.setItem("token", response.data.token);
@@ -39,9 +39,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.status === httpStatus.OK) {
-        console.log("Token:", response.data.token); // ✅ Log token
-        localStorage.setItem("token", response.data.token); // ✅ Store token
-        setUser(response.data.user); // Set user only (not entire response)
+        console.log("Token:", response.data.token);
+        localStorage.setItem("token", response.data.token);
+        setUser(response.data.user);
         router("/");
       }
     } catch (err) {

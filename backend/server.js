@@ -19,6 +19,7 @@ connectDB();
 
 const io = initSocket(server);
 io.on("connection", (socket) => {
+  console.log("SOMETHING CONNECTED");
   console.log("New client connected:", socket.id);
 
   socket.on("disconnect", () => {
@@ -28,7 +29,7 @@ io.on("connection", (socket) => {
 
 app.use("/api/v1/users", userRoutes);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
