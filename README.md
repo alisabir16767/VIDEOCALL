@@ -2,7 +2,7 @@
 
 # 🔗  MERN + WebRTC Video Conferencing App
 
-A full-featured real-time video conferencing web application built using the **MERN stack** and **WebRTC**, similar to Zoom. Users can create and join meetings, share their screen, chat with participants, and connect via video/audio in real time.
+A full-featured real-time video conferencing web application built using the **MERN stack** and **WebRTC** . Users can create and join meetings, share their screen, chat with participants, and connect via video/audio in real time.
 
 ## 🚀 Live Demo
 
