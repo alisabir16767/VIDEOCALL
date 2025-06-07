@@ -8,7 +8,7 @@ export default function LandingPage() {
     <div className="landingPageContainer">
       <nav>
         <div className="navHeader">
-          <h2>Apna Video Call</h2>
+          <h2>Face Call</h2>
         </div>
         <div className="navlist">
           <p
@@ -43,7 +43,7 @@ export default function LandingPage() {
             Ones
           </h1>
 
-          <p>Cover a distance by Apna Video Call</p>
+          <p>Cover a distance by Face Call</p>
           <div role="button">
             <Link to={"/auth"}>Get Started</Link>
           </div>

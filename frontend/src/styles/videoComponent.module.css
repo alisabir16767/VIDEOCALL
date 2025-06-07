@@ -59,3 +59,99 @@
   position: absolute;
   bottom: 0;
 }
+/* Lobby styling */
+.lobbyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(to right, #141e30, #243b55);
+  color: white;
+  text-align: center;
+  gap: 20px;
+}
+
+.lobbyContainer h2 {
+  font-size: 2rem;
+}
+
+.lobbyContainer .MuiTextField-root {
+  width: 300px;
+}
+
+.lobbyContainer .MuiButton-contained {
+  background-color: #1976d2;
+}
+
+/* Chat box */
+.chatRoom {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.chatContainer h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.chattingDisplay {
+  overflow-y: auto;
+  max-height: 70vh;
+  margin-bottom: 10vh;
+  padding: 10px;
+}
+
+/* Chat Input Area */
+.chattingArea {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  background-color: #f0f0f0;
+}
+
+.chattingArea .MuiTextField-root {
+  flex-grow: 1;
+}
+
+/* Video adjustments for responsiveness */
+@media (max-width: 768px) {
+  .chatRoom {
+    width: 100vw;
+    height: 40vh;
+    bottom: 0;
+    top: auto;
+    z-index: 1000;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 200px;
+  }
+
+  .conferenceView video {
+    width: 80vw;
+    height: 25vh;
+  }
+
+  .meetUserVideo {
+    height: 15vh;
+    left: 10px;
+  }
+
+  .buttonContainers {
+    position: fixed; /* <- Change from absolute to fixed */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Optional background for visibility */
+    padding: 10px 0;
+    z-index: 1100; /* Above chatRoom */
+    text-align: center;
+  }
+
+  .buttonContainers svg {
+    font-size: 2rem;
+  }
+}
