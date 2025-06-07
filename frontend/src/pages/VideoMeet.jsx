@@ -515,7 +515,9 @@ export default function VideoMeetComponent() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             variant="outlined"
+            sx={{ backgroundColor: "white" }}
           />
+
           <Button variant="contained" onClick={connect}>
             Connect
           </Button>
