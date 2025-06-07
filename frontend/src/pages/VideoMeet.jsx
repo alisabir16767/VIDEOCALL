@@ -71,10 +71,7 @@ export default function VideoMeetComponent() {
         navigator.mediaDevices
           .getDisplayMedia({ video: true, audio: true })
           .then(getDislayMediaSuccess)
-          .then((stream) => {
-            console.log("HERE");
-            getUserMediaSuccess(stream);
-          })
+          .then((stream) => {})
           .catch((e) => console.log(e));
       }
     }
@@ -212,18 +209,13 @@ export default function VideoMeetComponent() {
       navigator.mediaDevices
         .getUserMedia({ video: video, audio: audio })
         .then(getUserMediaSuccess)
-        .then((stream) => {
-          console.log("HERE");
-          getUserMediaSuccess(stream);
-        })
+        .then((stream) => {})
         .catch((e) => console.log(e));
     } else {
       try {
         let tracks = localVideoref.current.srcObject.getTracks();
         tracks.forEach((track) => track.stop());
-      } catch (e) {
-        console.log(e);
-      }
+      } catch (e) {}
     }
   };
 
@@ -406,9 +398,7 @@ export default function VideoMeetComponent() {
 
             try {
               connections[id2].addStream(window.localStream);
-            } catch (e) {
-              console.log(e);
-            }
+            } catch (e) {}
 
             connections[id2].createOffer().then((description) => {
               connections[id2]
@@ -468,9 +458,7 @@ export default function VideoMeetComponent() {
     try {
       let tracks = localVideoref.current.srcObject.getTracks();
       tracks.forEach((track) => track.stop());
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) {}
     window.location.href = "/";
   };
 

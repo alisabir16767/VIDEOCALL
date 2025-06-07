@@ -1,105 +1,96 @@
 .landingPageContainer {
   width: 100vw;
   height: 100vh;
-  background: url('../background.png');
+  background: url("/public/background.png");
   background-repeat: no-repeat;
   background-size: cover;
-  background-position: center;
   color: white;
-  display: flex;
-  flex-direction: column;
 }
 
 .landingPageContainer nav {
-  padding: 1.6rem 1.2rem;
+  padding-inline: 1.2rem;
+  padding-block: 1.6rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+
 }
 
 .landingPageContainer nav h2 {
   font-size: 1.8rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .landingPageContainer nav .navlist {
   display: flex;
   gap: 1.6rem;
   cursor: pointer;
-}
 
-.landingPageContainer nav .navlist p,
-.landingPageContainer nav .navlist div {
-  transition: color 0.3s ease;
-}
-
-.landingPageContainer nav .navlist p:hover,
-.landingPageContainer nav .navlist div:hover {
-  color: #FF9839;
 }
 
 .landingMainContainer {
   display: flex;
   justify-content: space-between;
+  padding-inline: 3rem;
+  height: 80vh;
   align-items: center;
-  padding: 5rem;
-  flex: 1;
 }
 
-.landingMainContainer > div:first-child {
-  max-width: 50%;
+.landingMainContainer>div:nth-child(1) {
+  font-size: 2.2rem;
 }
 
-.landingMainContainer h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
+.landingMainContainer>div:nth-child(1) div[role='button'] {
+  background: #D97500;
+  width: fit-content;
+  padding: 1rem;
+  border-radius: 20px;
+  margin-top: 1.9rem;
 }
 
-.landingMainContainer p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-}
-
-.landingMainContainer div[role="button"] {
-  background-color: #FF9839;
+.landingMainContainer>div:nth-child(1) div[role='button'] a {
+  text-decoration: none;
   color: white;
-  padding: 0.8rem 1.6rem;
-  border-radius: 8px;
-  font-weight: 500;
-  display: inline-block;
-  transition: background-color 0.3s ease;
+  font-size: 1.7rem;
 }
 
-.landingMainContainer div[role="button"]:hover {
-  background-color: #e27d28;
+.landingMainContainer>div:nth-child(2) img {
+  height: 70vh;
+  width: auto;
 }
 
-/* Right Image */
-.landingMainContainer > div:last-child img {
-  width: 100%;
-  max-width: 600px;
+.navBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 20px;
+  text-align: center;
+
+}
+.meetContainer {
+  display: flex;
+  padding-inline: 20px;
+  height: 80vh;
+  gap: 10vw;
+  justify-content: center;
+}
+
+
+
+.leftPanel {
+  height: 100%;
+  display: flex;
+  align-items: center;
+
+}
+
+.rightPanel {
+  display: flex;
+  align-items: center;
+}
+
+.rightPanel > img {
+  width: 30vw;
   height: auto;
-  object-fit: contain;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .landingMainContainer {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .landingMainContainer > div:first-child,
-  .landingMainContainer > div:last-child {
-    max-width: 100%;
-  }
-
-  .landingMainContainer h1 {
-    font-size: 2rem;
-  }
-/* ,jsmdnx*/
-  .landingMainContainer p {
-    font-size: 1rem;
-  }
+  border-radius: 20px;
 }

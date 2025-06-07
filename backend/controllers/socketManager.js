@@ -1,12 +1,11 @@
 import { Server } from "socket.io";
 
-let io;
 let connections = {};
 let messages = {};
 let timeOnline = {};
 
-export const initSocket = (httpServer) => {
-  io = new Server(httpServer, {
+export const connectToSocket = (server) => {
+  const io = new Server(server, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
@@ -14,25 +13,22 @@ export const initSocket = (httpServer) => {
       credentials: true,
     },
   });
-  return io;
-};
 
-export const getIo = () => {
-  if (!io) {
-    throw new Error("Socket.io not initialized!");
-  }
-  return io;
-};
-
-export const connectToSocket = (server) => {
   io.on("connection", (socket) => {
-    console.log("New client connected");
+    console.log("SOMETHING CONNECTED");
+
     socket.on("join-call", (path) => {
       if (connections[path] === undefined) {
         connections[path] = [];
       }
       connections[path].push(socket.id);
+
       timeOnline[socket.id] = new Date();
+
+      // connections[path].forEach(elem => {
+      //     io.to(elem)
+      // })
+
       for (let a = 0; a < connections[path].length; a++) {
         io.to(connections[path][a]).emit(
           "user-joined",
@@ -40,8 +36,9 @@ export const connectToSocket = (server) => {
           connections[path]
         );
       }
+
       if (messages[path] !== undefined) {
-        for (let a = 0; a < messages[path].length; a++) {
+        for (let a = 0; a < messages[path].length; ++a) {
           io.to(socket.id).emit(
             "chat-message",
             messages[path][a]["data"],
@@ -55,6 +52,7 @@ export const connectToSocket = (server) => {
     socket.on("signal", (toId, message) => {
       io.to(toId).emit("signal", socket.id, message);
     });
+
     socket.on("chat-message", (data, sender) => {
       const [matchingRoom, found] = Object.entries(connections).reduce(
         ([room, isFound], [roomKey, roomValue]) => {
@@ -84,6 +82,7 @@ export const connectToSocket = (server) => {
         });
       }
     });
+
     socket.on("disconnect", () => {
       var diffTime = Math.abs(timeOnline[socket.id] - new Date());
 
