@@ -71,9 +71,14 @@ export default function VideoMeetComponent() {
         navigator.mediaDevices
           .getDisplayMedia({ video: true, audio: true })
           .then(getDislayMediaSuccess)
-          .then((stream) => {})
-          .catch((e) => console.log(e));
+          .catch((e) => {
+            console.log(e);
+            setScreen(false); // Reset screen state if sharing fails
+          });
       }
+    } else {
+      // When stopping screen share, revert to camera
+      getUserMedia();
     }
   };
 
@@ -135,6 +140,18 @@ export default function VideoMeetComponent() {
     setAudio(audioAvailable);
     connectToSocketServer();
   };
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      if (window.localStream) {
+        window.localStream.getTracks().forEach((track) => track.stop());
+      }
+      socketRef.current?.disconnect();
+      for (let id in connections) {
+        connections[id].close();
+      }
+    };
+  }, []); // Empty dependency array means this runs only on mount/unmount
 
   let getUserMediaSuccess = (stream) => {
     try {
@@ -208,33 +225,62 @@ export default function VideoMeetComponent() {
     if ((video && videoAvailable) || (audio && audioAvailable)) {
       navigator.mediaDevices
         .getUserMedia({ video: video, audio: audio })
-        .then(getUserMediaSuccess)
-        .then((stream) => {})
+        .then((stream) => {
+          getUserMediaSuccess(stream);
+        })
         .catch((e) => console.log(e));
     } else {
       try {
-        let tracks = localVideoref.current.srcObject.getTracks();
-        tracks.forEach((track) => track.stop());
-      } catch (e) {}
+        let tracks = localVideoref.current.srcObject?.getTracks();
+        tracks?.forEach((track) => track.stop());
+        // Fallback to black silence when no media
+        let blackSilence = (...args) =>
+          new MediaStream([black(...args), silence()]);
+        window.localStream = blackSilence();
+        localVideoref.current.srcObject = window.localStream;
+      } catch (e) {
+        console.log(e);
+      }
     }
   };
 
   let getDislayMediaSuccess = (stream) => {
-    console.log("HERE");
     try {
-      window.localStream.getTracks().forEach((track) => track.stop());
+      // Stop existing tracks if any
+      if (window.localStream) {
+        window.localStream.getTracks().forEach((track) => track.stop());
+      }
     } catch (e) {
       console.log(e);
     }
 
+    // Add event listener to detect when user stops screen sharing via browser UI
+    stream.getVideoTracks()[0].onended = () => {
+      setScreen(false);
+      getUserMedia();
+    };
+
     window.localStream = stream;
     localVideoref.current.srcObject = stream;
 
+    // Update all peer connections with the new stream
     for (let id in connections) {
       if (id === socketIdRef.current) continue;
 
-      connections[id].addStream(window.localStream);
+      // Remove old tracks
+      const sender = connections[id].getSenders();
+      sender.forEach((sender) => {
+        if (sender.track.kind === "video") {
+          connections[id].removeTrack(sender);
+        }
+      });
 
+      // Add new screen sharing track
+      stream.getTracks().forEach((track) => {
+        connections[id].addTrack(track, stream);
+      });
+
+      // Create new offer
       connections[id].createOffer().then((description) => {
         connections[id]
           .setLocalDescription(description)
@@ -248,27 +294,6 @@ export default function VideoMeetComponent() {
           .catch((e) => console.log(e));
       });
     }
-
-    stream.getTracks().forEach(
-      (track) =>
-        (track.onended = () => {
-          setScreen(false);
-
-          try {
-            let tracks = localVideoref.current.srcObject.getTracks();
-            tracks.forEach((track) => track.stop());
-          } catch (e) {
-            console.log(e);
-          }
-
-          let blackSilence = (...args) =>
-            new MediaStream([black(...args), silence()]);
-          window.localStream = blackSilence();
-          localVideoref.current.srcObject = window.localStream;
-
-          getUserMedia();
-        })
-    );
   };
 
   let gotMessageFromServer = (fromId, message) => {
@@ -327,7 +352,7 @@ export default function VideoMeetComponent() {
 
       socketRef.current.on("user-joined", (id, clients) => {
         clients.forEach((socketListId) => {
-          if (connections[socketListId]) return; // Avoid duplicate peers
+          if (connections[socketListId]) return;
 
           const peer = new RTCPeerConnection(peerConfigConnections);
           connections[socketListId] = peer;
