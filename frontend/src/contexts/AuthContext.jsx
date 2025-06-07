@@ -1,17 +1,25 @@
-import React, { createContext, useState } from "react";
 import axios from "axios";
 import httpStatus from "http-status";
+import { createContext, useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import server from "../environment";
 
-export const AuthContext = createContext({});
+export const AuthContext = createContext({
+  userData: null,
+  setUserData: () => {},
+  addToUserHistory: async () => {},
+  getHistoryOfUser: async () => {},
+  handleRegister: async () => {},
+  handleLogin: async () => {},
+});
 
 const client = axios.create({
-  baseURL: "http://localhost:3000/api/v1/users",
+  baseURL: `${server}/api/v1/users`,
 });
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const router = useNavigate();
+  const [userData, setUserData] = useState(null);
+  const navigate = useNavigate();
 
   const handleRegister = async (name, username, password) => {
     try {
@@ -20,17 +28,16 @@ export const AuthProvider = ({ children }) => {
         username,
         password,
       });
-      console.log("Token:", response.data.token);
 
-      if (response.status === httpStatus.OK) {
-        localStorage.setItem("token", response.data.token);
-        router("/home");
+      if (response.status === httpStatus.CREATED) {
+        return response.data.message;
       }
+      throw new Error("Registration failed");
     } catch (err) {
-      console.error("Registration failed:", err);
-      throw err;
+      throw err.response?.data?.message || err.message;
     }
   };
+
   const handleLogin = async (username, password) => {
     try {
       const response = await client.post("/login", {
@@ -39,23 +46,67 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.status === httpStatus.OK) {
-        console.log("Token:", response.data.token);
         localStorage.setItem("token", response.data.token);
-        setUser(response.data.user);
-        router("/");
+        setUserData(response.data.user); // Assuming the response includes user data
+        navigate("/home");
       }
     } catch (err) {
-      console.error("Login failed:", err);
-      throw err;
+      throw err.response?.data?.message || "Login failed";
+    }
+  };
+
+  const getHistoryOfUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await client.get("/get_all_activity", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (err) {
+      throw err.response?.data?.message || err.message;
+    }
+  };
+
+  const addToUserHistory = async (meetingCode) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await client.post(
+        "/add_to_activity",
+        { meeting_code: meetingCode },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data;
+    } catch (err) {
+      throw err.response?.data?.message || err.message;
     }
   };
 
   const value = {
-    user,
-    setUser,
+    userData,
+    setUserData,
+    addToUserHistory,
+    getHistoryOfUser,
     handleRegister,
     handleLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  return useContext(AuthContext);
 };
