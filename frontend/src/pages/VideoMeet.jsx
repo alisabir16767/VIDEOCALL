@@ -327,12 +327,14 @@ export default function VideoMeetComponent() {
 
       socketRef.current.on("user-joined", (id, clients) => {
         clients.forEach((socketListId) => {
-          connections[socketListId] = new RTCPeerConnection(
-            peerConfigConnections
-          );
-          // Wait for their ice candidate
-          connections[socketListId].onicecandidate = function (event) {
-            if (event.candidate != null) {
+          if (connections[socketListId]) return; // Avoid duplicate peers
+
+          const peer = new RTCPeerConnection(peerConfigConnections);
+          connections[socketListId] = peer;
+
+          // Handle ICE candidates
+          peer.onicecandidate = (event) => {
+            if (event.candidate) {
               socketRef.current.emit(
                 "signal",
                 socketListId,
@@ -341,77 +343,58 @@ export default function VideoMeetComponent() {
             }
           };
 
-          // Wait for their video stream
-          connections[socketListId].onaddstream = (event) => {
-            console.log("BEFORE:", videoRef.current);
-            console.log("FINDING ID: ", socketListId);
+          // Handle remote stream
+          peer.onaddstream = (event) => {
+            setVideos((videos) => {
+              const existing = videos.find((v) => v.socketId === socketListId);
 
-            let videoExists = videoRef.current.find(
-              (video) => video.socketId === socketListId
-            );
+              const updatedVideos = existing
+                ? videos.map((v) =>
+                    v.socketId === socketListId
+                      ? { ...v, stream: event.stream }
+                      : v
+                  )
+                : [...videos, { socketId: socketListId, stream: event.stream }];
 
-            if (videoExists) {
-              console.log("FOUND EXISTING");
-
-              // Update the stream of the existing video
-              setVideos((videos) => {
-                const updatedVideos = videos.map((video) =>
-                  video.socketId === socketListId
-                    ? { ...video, stream: event.stream }
-                    : video
-                );
-                videoRef.current = updatedVideos;
-                return updatedVideos;
-              });
-            } else {
-              // Create a new video
-              console.log("CREATING NEW");
-              let newVideo = {
-                socketId: socketListId,
-                stream: event.stream,
-                autoplay: true,
-                playsinline: true,
-              };
-
-              setVideos((videos) => {
-                const updatedVideos = [...videos, newVideo];
-                videoRef.current = updatedVideos;
-                return updatedVideos;
-              });
-            }
+              videoRef.current = updatedVideos;
+              return updatedVideos;
+            });
           };
 
-          // Add the local video stream
-          if (window.localStream !== undefined && window.localStream !== null) {
-            connections[socketListId].addStream(window.localStream);
-          } else {
-            let blackSilence = (...args) =>
+          // Add local stream
+          if (!window.localStream) {
+            const blackSilence = (...args) =>
               new MediaStream([black(...args), silence()]);
             window.localStream = blackSilence();
-            connections[socketListId].addStream(window.localStream);
           }
+
+          peer.addStream(window.localStream);
         });
 
+        // If this user just joined
         if (id === socketIdRef.current) {
-          for (let id2 in connections) {
-            if (id2 === socketIdRef.current) continue;
+          for (let peerId in connections) {
+            if (peerId === socketIdRef.current) continue;
+
+            const peer = connections[peerId];
 
             try {
-              connections[id2].addStream(window.localStream);
-            } catch (e) {}
+              peer.addStream(window.localStream);
+            } catch (e) {
+              console.warn("Stream already added or error adding:", e);
+            }
 
-            connections[id2].createOffer().then((description) => {
-              connections[id2]
-                .setLocalDescription(description)
-                .then(() => {
-                  socketRef.current.emit(
-                    "signal",
-                    id2,
-                    JSON.stringify({ sdp: connections[id2].localDescription })
-                  );
-                })
-                .catch((e) => console.log(e));
-            });
+            peer
+              .createOffer()
+              .then((desc) => peer.setLocalDescription(desc))
+              .then(() => {
+                socketRef.current.emit(
+                  "signal",
+                  peerId,
+                  JSON.stringify({ sdp: peer.localDescription })
+                );
+              })
+              .catch((err) => console.error("Offer error:", err));
           }
         }
       });
