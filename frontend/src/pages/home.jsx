@@ -1,72 +1,63 @@
 import React, { useContext, useState } from "react";
 import withAuth from "../utils/withAuth";
 import { useNavigate } from "react-router-dom";
-import "../App.css";
-import { Button, IconButton, TextField } from "@mui/material";
-import RestoreIcon from "@mui/icons-material/Restore";
+import { Box, Container, Fade, useTheme, alpha } from "@mui/material";
 import { AuthContext } from "../contexts/AuthContext";
+import Navbar from "../components/layout/Navbar";
+import HeroSection from "../components/home/HeroSection";
+import JoinPanel from "../components/home/JoinPanel";
+import Features from "../components/home/Features";
 
 function HomeComponent() {
   let navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const theme = useTheme();
 
   const { addToUserHistory } = useContext(AuthContext);
+
   let handleJoinVideoCall = async () => {
-    await addToUserHistory(meetingCode);
-    navigate(`/${meetingCode}`);
+    if (!meetingCode.trim()) return;
+
+    setIsJoining(true);
+    try {
+      await addToUserHistory(meetingCode);
+      navigate(`/${meetingCode}`);
+    } catch (error) {
+      console.error("Failed to join meeting:", error);
+      setIsJoining(false);
+    }
   };
 
   return (
-    <>
-      <div className="navBar">
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <h2>Apna Video Call</h2>
-        </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, ${alpha(
+          theme.palette.primary.main,
+          0.05
+        )} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+      }}
+    >
+      <Navbar />
 
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <IconButton
-            onClick={() => {
-              navigate("/history");
-            }}
-          >
-            <RestoreIcon />
-          </IconButton>
-          <p>History</p>
+      <Container maxWidth="lg" sx={{ mt: 8 }}>
+        <Fade in={true} timeout={1000}>
+          <Box>
+            <HeroSection />
 
-          <Button
-            onClick={() => {
-              localStorage.removeItem("token");
-              navigate("/auth");
-            }}
-          >
-            Logout
-          </Button>
-        </div>
-      </div>
+            <JoinPanel
+              meetingCode={meetingCode}
+              setMeetingCode={setMeetingCode}
+              handleJoinVideoCall={handleJoinVideoCall}
+              isJoining={isJoining}
+            />
 
-      <div className="meetContainer">
-        <div className="leftPanel">
-          <div>
-            <h2>Providing Quality Video Call Just Like Quality Education</h2>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <TextField
-                onChange={(e) => setMeetingCode(e.target.value)}
-                id="outlined-basic"
-                label="Meeting Code"
-                variant="outlined"
-              />
-              <Button onClick={handleJoinVideoCall} variant="contained">
-                Join
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="rightPanel">
-          <img srcSet="/logo3.png" alt="" />
-        </div>
-      </div>
-    </>
+            <Features />
+          </Box>
+        </Fade>
+      </Container>
+    </Box>
   );
 }
 

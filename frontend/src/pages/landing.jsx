@@ -1,57 +1,38 @@
-import React from "react";
-import "../App.css";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Box, Container, useTheme, alpha } from "@mui/material";
+import LandingNavbar from "../components/landing/LandingNavbar";
+import LandingHero from "../components/landing/LandingHero";
+import LandingFeatures from "../components/landing/LandingFeatures";
+import LandingCTA from "../components/landing/LandingCTA";
+import Footer from "../components/layout/Footer";
+
 export default function LandingPage() {
-  const router = useNavigate();
+  const theme = useTheme();
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(true);
+  }, []);
 
   return (
-    <div className="landingPageContainer">
-      <nav>
-        <div className="navHeader">
-          <h2>Face Call</h2>
-        </div>
-        <div className="navlist">
-          <p
-            onClick={() => {
-              router("/aljk23");
-            }}
-          >
-            Join as Guest
-          </p>
-          <p
-            onClick={() => {
-              router("/auth");
-            }}
-          >
-            Register
-          </p>
-          <div
-            onClick={() => {
-              router("/auth");
-            }}
-            role="button"
-          >
-            <p>Login</p>
-          </div>
-        </div>
-      </nav>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, ${alpha(
+          theme.palette.primary.main,
+          0.05
+        )} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+        overflowX: "hidden",
+      }}
+    >
+      <LandingNavbar />
 
-      <div className="landingMainContainer">
-        <div>
-          <h1>
-            <span style={{ color: "#FF9839" }}>Connect</span> with your loved
-            Ones
-          </h1>
-
-          <p>Cover a distance by Face Call</p>
-          <div role="button">
-            <Link to={"/auth"}>Get Started</Link>
-          </div>
-        </div>
-        <div>
-          <img src="/mobile.png" alt="" />
-        </div>
-      </div>
-    </div>
+      <Container maxWidth="lg" sx={{ mt: 8 }}>
+        <LandingHero />
+        <LandingFeatures loaded={loaded} />
+        <LandingCTA />
+        <Footer />
+      </Container>
+    </Box>
   );
 }
