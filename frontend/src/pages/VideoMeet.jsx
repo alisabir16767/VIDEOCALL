@@ -4,6 +4,7 @@ import { Box, Snackbar, Alert } from "@mui/material";
 import server from "../environment";
 import LobbyScreen from "../components/video-meet/LobbyScreen";
 import MeetingScreen from "../components/video-meet/MeetingScreen";
+import WaitingRoomView from "../components/video-meet/WaitingRoomView";
 
 const server_url = server;
 
@@ -22,6 +23,7 @@ export default function VideoMeetComponent() {
   let socketIdRef = useRef();
   let localVideoref = useRef();
   let screenStreamRef = useRef(null);
+  let lobbyStreamRef = useRef(null);
 
   const [videoAvailable, setVideoAvailable] = useState(true);
   const [audioAvailable, setAudioAvailable] = useState(true);
@@ -47,6 +49,14 @@ export default function VideoMeetComponent() {
     code: "",
     startedAt: new Date(),
   });
+  const [waitingParticipants, setWaitingParticipants] = useState([]);
+  const [polls, setPolls] = useState([]);
+  const [inWaitingRoom, setInWaitingRoom] = useState(false);
+  const [isMeetingLocked, setIsMeetingLocked] = useState(false);
+  const [showParticipantsPanel, setShowParticipantsPanel] = useState(false);
+  const [showWaitingRoomPanel, setShowWaitingRoomPanel] = useState(false);
+  const [showPollsPanel, setShowPollsPanel] = useState(false);
+  const [isHost, setIsHost] = useState(false);
 
   const videoRef = useRef([]);
 
@@ -57,10 +67,49 @@ export default function VideoMeetComponent() {
 
   // Handle media changes
   useEffect(() => {
+    if (!askForUsername && window.localStream) {
+      const videoTrack = window.localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        if (screen) {
+          videoTrack.enabled = true;
+        } else {
+          videoTrack.enabled = video;
+        }
+      }
+      const audioTrack = window.localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = audio;
+      }
+      
+      // Update peer connections when audio/video state changes
+      Object.entries(connections).forEach(([id, connection]) => {
+        if (id === socketIdRef.current) return;
+        
+        // For audio changes, we need to update the sender
+        if (audioTrack) {
+          const sender = connection.getSenders().find(s => s.track?.kind === 'audio');
+          if (sender) {
+            sender.replaceTrack(audioTrack);
+          }
+        }
+        
+        // For video changes, we need to update the sender
+        if (videoTrack) {
+          const sender = connection.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(videoTrack);
+          }
+        }
+      });
+    }
+  }, [video, audio, askForUsername, screen]);
+
+  // Initial media setup when joining
+  useEffect(() => {
     if (!askForUsername) {
       getUserMedia();
     }
-  }, [video, audio, askForUsername]);
+  }, [askForUsername]);
 
   // Handle screen sharing
   useEffect(() => {
@@ -83,6 +132,10 @@ export default function VideoMeetComponent() {
   }, []);
 
   const stopAllTracks = () => {
+    if (lobbyStreamRef.current) {
+      lobbyStreamRef.current.getTracks().forEach((track) => track.stop());
+      lobbyStreamRef.current = null;
+    }
     if (window.localStream) {
       window.localStream.getTracks().forEach((track) => track.stop());
     }
@@ -93,37 +146,64 @@ export default function VideoMeetComponent() {
 
   const getPermissions = async () => {
     try {
-      // Check video permission
+      let canVideo = false;
+      let canAudio = false;
+
       try {
         const videoPermission = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
+        canVideo = true;
         setVideoAvailable(true);
         videoPermission.getTracks().forEach((track) => track.stop());
       } catch {
         setVideoAvailable(false);
       }
 
-      // Check audio permission
       try {
         const audioPermission = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
+        canAudio = true;
         setAudioAvailable(true);
         audioPermission.getTracks().forEach((track) => track.stop());
       } catch {
         setAudioAvailable(false);
       }
 
-      // Check screen sharing availability
       setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
+
+      if (canVideo || canAudio) {
+        startLobbyPreview(canVideo, canAudio);
+      }
     } catch (error) {
       console.log("Permission error:", error);
     }
   };
 
+  const startLobbyPreview = async (useVideo, useAudio) => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return;
+      }
+      const constraints = {
+        video: useVideo,
+        audio: useAudio,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      lobbyStreamRef.current = stream;
+      if (localVideoref.current) {
+        localVideoref.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.log("Lobby preview error:", error);
+    }
+  };
+
   const getUserMedia = async () => {
     try {
+      // Don't stop all tracks if we are just re-acquiring, but here we are initializing.
+      // But wait, getUserMedia is now only called on mount (effectively).
       stopAllTracks();
 
       if (!videoAvailable && !audioAvailable) {
@@ -132,11 +212,27 @@ export default function VideoMeetComponent() {
       }
 
       const constraints = {
-        video: video && videoAvailable,
-        audio: audio && audioAvailable,
+        video: videoAvailable,
+        audio: audioAvailable,
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Apply initial state
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) videoTrack.enabled = video;
+      
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) audioTrack.enabled = audio;
+
+      // Log for debugging
+      console.log("User media tracks:", {
+        video: stream.getVideoTracks().length,
+        audio: stream.getAudioTracks().length,
+        videoEnabled: video,
+        audioEnabled: audio
+      });
+
       handleNewStream(stream);
     } catch (error) {
       console.log("Failed to get user media:", error);
@@ -181,6 +277,13 @@ export default function VideoMeetComponent() {
       localVideoref.current.srcObject = stream;
     }
 
+    // Log stream details for debugging
+    console.log("New stream created:", {
+      videoTracks: stream.getVideoTracks().length,
+      audioTracks: stream.getAudioTracks().length,
+      trackKinds: stream.getTracks().map(t => ({kind: t.kind, enabled: t.enabled, muted: t.muted}))
+    });
+
     // Update all peer connections with new stream
     Object.entries(connections).forEach(([id, connection]) => {
       if (id === socketIdRef.current) return;
@@ -195,7 +298,10 @@ export default function VideoMeetComponent() {
         }
       });
 
-      renegotiatePeer(connection, id);
+      // Renegotiate only if we replaced tracks
+      if (senders.length > 0) {
+        renegotiatePeer(connection, id);
+      }
     });
   };
 
@@ -289,11 +395,9 @@ export default function VideoMeetComponent() {
 
     socketRef.current.on("connect", () => {
       setConnectionStatus("connected");
-      socketRef.current.emit("join-call", window.location.href, username);
+      const code = window.location.pathname.split("/").filter(Boolean).pop();
+      socketRef.current.emit("join-call", code, username);
       socketIdRef.current = socketRef.current.id;
-
-      // Extract meeting code from URL
-      const code = window.location.href.split("/").pop();
       setMeetingInfo((prev) => ({ ...prev, code, startedAt: new Date() }));
     });
 
@@ -311,22 +415,121 @@ export default function VideoMeetComponent() {
 
     socketRef.current.on("user-left", (id) => {
       setVideos((prev) => prev.filter((video) => video.socketId !== id));
-      setParticipants((prev) => prev.filter((p) => p.id !== id));
+      setParticipants((prev) =>
+        prev.filter((p) => (p.socketId || p.id) !== id)
+      );
       delete connections[id];
     });
 
     socketRef.current.on("user-joined", (id, clients) => {
-      setParticipants((prev) => [
-        ...prev,
-        { id, name: `User ${id.slice(0, 4)}` },
-      ]);
-
       clients.forEach((socketListId) => {
         if (connections[socketListId] || socketListId === socketIdRef.current)
           return;
 
         createPeerConnection(socketListId);
       });
+    });
+
+    socketRef.current.on("participant-list", (list) => {
+      setParticipants(list);
+      if (socketIdRef.current && list.length > 0) {
+        const hostSocketId = list[0].socketId;
+        setIsHost(hostSocketId === socketIdRef.current);
+      } else {
+        setIsHost(false);
+      }
+    });
+
+    socketRef.current.on("waiting-participant", (socketId, name) => {
+      setWaitingParticipants((prev) => {
+        if (prev.some((p) => p.socketId === socketId)) {
+          return prev;
+        }
+        return [...prev, { socketId, username: name }];
+      });
+    });
+
+    socketRef.current.on("status", (status) => {
+      if (status === "waiting-room") {
+        setInWaitingRoom(true);
+        showSnackbar("You are in the waiting room", "info");
+      } else {
+        setInWaitingRoom(false);
+      }
+    });
+
+    socketRef.current.on("admitted", () => {
+      setInWaitingRoom(false);
+      showSnackbar("You have been admitted to the meeting", "success");
+    });
+
+    socketRef.current.on("denied", () => {
+      showSnackbar("You were denied entry to the meeting", "error");
+      stopAllTracks();
+      socketRef.current.disconnect();
+      window.location.href = "/";
+    });
+
+    socketRef.current.on("muted", () => {
+      setAudio(false);
+      if (window.localStream) {
+        window.localStream.getAudioTracks().forEach((track) => {
+          track.enabled = false;
+        });
+      }
+      showSnackbar("You have been muted by the host", "info");
+    });
+
+    socketRef.current.on("kicked", () => {
+      showSnackbar("You have been removed from the meeting", "error");
+      stopAllTracks();
+      socketRef.current.disconnect();
+      window.location.href = "/";
+    });
+
+    socketRef.current.on("meeting-locked", () => {
+      setIsMeetingLocked(true);
+      showSnackbar(
+        "Meeting locked. New participants will wait for approval",
+        "info"
+      );
+    });
+
+    socketRef.current.on("meeting-unlocked", () => {
+      setIsMeetingLocked(false);
+      showSnackbar(
+        "Meeting unlocked. New participants can join directly",
+        "info"
+      );
+    });
+
+    socketRef.current.on("poll-created", (poll) => {
+      setPolls((prev) => {
+        const id = poll._id || poll.id;
+        const index = prev.findIndex((p) => (p._id || p.id) === id);
+        if (index !== -1) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...poll };
+          return next;
+        }
+        return [...prev, poll];
+      });
+    });
+
+    socketRef.current.on("poll-updated", ({ pollId, votes }) => {
+      setPolls((prev) =>
+        prev.map((poll) =>
+          (poll._id || poll.id) === pollId ? { ...poll, votes } : poll
+        )
+      );
+    });
+
+    socketRef.current.on("poll-ended", (pollId) => {
+      setPolls((prev) =>
+        prev.map((poll) =>
+          (poll._id || poll.id) === pollId ? { ...poll, isActive: false } : poll
+        )
+      );
     });
 
     socketRef.current.on("disconnect", () => {
@@ -367,7 +570,7 @@ export default function VideoMeetComponent() {
       }
     };
 
-    // Add local stream
+    // Add local stream - ensure we add both audio and video tracks
     if (window.localStream) {
       window.localStream.getTracks().forEach((track) => {
         peer.addTrack(track, window.localStream);
@@ -418,6 +621,10 @@ export default function VideoMeetComponent() {
       showSnackbar("Please enter a username", "warning");
       return;
     }
+    if (lobbyStreamRef.current) {
+      lobbyStreamRef.current.getTracks().forEach((track) => track.stop());
+      lobbyStreamRef.current = null;
+    }
     setAskForUsername(false);
     connectToSocketServer();
     getMedia();
@@ -437,6 +644,52 @@ export default function VideoMeetComponent() {
     showSnackbar("Meeting code copied!", "success");
   };
 
+  const handleMuteParticipant = (targetSocketId) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("mute-participant", targetSocketId);
+  };
+
+  const handleRemoveParticipant = (targetSocketId) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("remove-participant", targetSocketId);
+  };
+
+  const handleAdmitParticipant = (targetSocketId) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("admit-participant", targetSocketId);
+    setWaitingParticipants((prev) =>
+      prev.filter((p) => p.socketId !== targetSocketId)
+    );
+  };
+
+  const handleDenyParticipant = (targetSocketId) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("deny-participant", targetSocketId);
+    setWaitingParticipants((prev) =>
+      prev.filter((p) => p.socketId !== targetSocketId)
+    );
+  };
+
+  const handleCreatePoll = (pollData) => {
+    if (!socketRef.current || !meetingInfo.code) return;
+    socketRef.current.emit("create-poll", meetingInfo.code, pollData);
+  };
+
+  const handleVotePoll = (pollId, optionIndex) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("submit-vote", pollId, optionIndex);
+  };
+
+  const handleEndPoll = (pollId) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("end-poll", pollId);
+  };
+
+  const handleToggleMeetingLock = () => {
+    if (!socketRef.current || !meetingInfo.code) return;
+    socketRef.current.emit("meeting-lock", meetingInfo.code, !isMeetingLocked);
+  };
+
   return (
     <Box sx={{ height: "100vh", bgcolor: "#1a1a1a", overflow: "hidden" }}>
       {askForUsername ? (
@@ -447,6 +700,14 @@ export default function VideoMeetComponent() {
           onConnect={connect}
           videoAvailable={videoAvailable}
           audioAvailable={audioAvailable}
+        />
+      ) : inWaitingRoom ? (
+        <WaitingRoomView
+          onLeave={() => {
+            stopAllTracks();
+            socketRef.current?.disconnect();
+            window.location.href = "/";
+          }}
         />
       ) : (
         <MeetingScreen
@@ -482,6 +743,24 @@ export default function VideoMeetComponent() {
           meetingInfo={meetingInfo}
           onCopyCode={copyMeetingCode}
           connectionStatus={connectionStatus}
+          waitingParticipants={waitingParticipants}
+          onMuteParticipant={handleMuteParticipant}
+          onRemoveParticipant={handleRemoveParticipant}
+          onAdmitParticipant={handleAdmitParticipant}
+          onDenyParticipant={handleDenyParticipant}
+          polls={polls}
+          onCreatePoll={handleCreatePoll}
+          onVotePoll={handleVotePoll}
+          onEndPoll={handleEndPoll}
+          isHost={isHost}
+          isMeetingLocked={isMeetingLocked}
+          onToggleMeetingLock={handleToggleMeetingLock}
+          showParticipantsPanel={showParticipantsPanel}
+          setShowParticipantsPanel={setShowParticipantsPanel}
+          showWaitingRoomPanel={showWaitingRoomPanel}
+          setShowWaitingRoomPanel={setShowWaitingRoomPanel}
+          showPollsPanel={showPollsPanel}
+          setShowPollsPanel={setShowPollsPanel}
         />
       )}
 

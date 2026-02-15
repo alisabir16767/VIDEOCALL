@@ -29,6 +29,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import { motion, AnimatePresence } from "framer-motion";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
+import PollIcon from "@mui/icons-material/Poll";
+import ParticipantList from "./ParticipantList";
+import WaitingRoomList from "./WaitingRoomList";
+import PollsWidget from "./PollsWidget";
 
 export default function MeetingScreen({
   localVideoRef,
@@ -52,6 +58,24 @@ export default function MeetingScreen({
   meetingInfo,
   onCopyCode,
   connectionStatus,
+  waitingParticipants,
+  onMuteParticipant,
+  onRemoveParticipant,
+  onAdmitParticipant,
+  onDenyParticipant,
+  polls,
+  onCreatePoll,
+  onVotePoll,
+  onEndPoll,
+  isHost,
+  isMeetingLocked,
+  onToggleMeetingLock,
+  showParticipantsPanel,
+  setShowParticipantsPanel,
+  showWaitingRoomPanel,
+  setShowWaitingRoomPanel,
+  showPollsPanel,
+  setShowPollsPanel,
 }) {
   const theme = useTheme();
   const messagesEndRef = useRef(null);
@@ -106,6 +130,19 @@ export default function MeetingScreen({
           <Box sx={{ flex: 1 }} />
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {isHost && (
+              <Tooltip
+                title={isMeetingLocked ? "Unlock meeting" : "Lock meeting"}
+              >
+                <IconButton
+                  onClick={onToggleMeetingLock}
+                  sx={{ color: "white" }}
+                >
+                  {isMeetingLocked ? <LockIcon /> : <LockOpenIcon />}
+                </IconButton>
+              </Tooltip>
+            )}
+
             <Chip
               icon={<PeopleIcon />}
               label={`${participants.length + 1} participants`}
@@ -258,6 +295,7 @@ export default function MeetingScreen({
                     }
                   }}
                   autoPlay
+                  muted={false} // Ensure audio is not muted for remote streams
                   style={{
                     width: "100%",
                     height: "100%",
@@ -286,7 +324,7 @@ export default function MeetingScreen({
           </Box>
         </Box>
 
-        {/* Chat Drawer */}
+        {/* Right Side Panels */}
         <AnimatePresence>
           {showChat && (
             <motion.div
@@ -335,12 +373,7 @@ export default function MeetingScreen({
                       sx={{
                         mb: 2,
                         display: "flex",
-                        justifyContent:
-                          // Check if msg.socketId is the same as the current user's socketId
-                          // Wait, I need to know the current user's socketId to distinguish sent messages.
-                          // msg.socketId === socketIdRef.current ? "flex-end" : "flex-start"
-                          // I'll need to pass the current socketId as a prop.
-                          msg.isLocal ? "flex-end" : "flex-start",
+                        justifyContent: msg.isLocal ? "flex-end" : "flex-start",
                       }}
                     >
                       <Paper
@@ -396,6 +429,47 @@ export default function MeetingScreen({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {isHost && showParticipantsPanel && (
+          <ParticipantList
+            participants={participants}
+            onMute={onMuteParticipant}
+            onRemove={onRemoveParticipant}
+            onClose={() => setShowParticipantsPanel(false)}
+            isHost={isHost}
+          />
+        )}
+
+        {isHost && showWaitingRoomPanel && (
+          <WaitingRoomList
+            waitingParticipants={waitingParticipants}
+            onAdmit={onAdmitParticipant}
+            onDeny={onDenyParticipant}
+            onClose={() => setShowWaitingRoomPanel(false)}
+          />
+        )}
+
+        {showPollsPanel && (
+          <Paper
+            elevation={8}
+            sx={{
+              height: "100%",
+              width: 360,
+              display: "flex",
+              flexDirection: "column",
+              borderRadius: 0,
+              borderLeft: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            }}
+          >
+            <PollsWidget
+              polls={polls}
+              onCreatePoll={onCreatePoll}
+              onVote={onVotePoll}
+              onEndPoll={onEndPoll}
+              isHost={isHost}
+            />
+          </Paper>
+        )}
       </Box>
 
       {/* Bottom Controls */}
@@ -487,6 +561,73 @@ export default function MeetingScreen({
               <ChatIcon />
             </IconButton>
           </Badge>
+        </Tooltip>
+
+        {isHost && (
+          <Tooltip title="Toggle participant list">
+            <IconButton
+              onClick={() => setShowParticipantsPanel(!showParticipantsPanel)}
+              sx={{
+                bgcolor: showParticipantsPanel
+                  ? theme.palette.primary.main
+                  : alpha("#fff", 0.1),
+                color: "white",
+                "&:hover": {
+                  bgcolor: showParticipantsPanel
+                    ? theme.palette.primary.dark
+                    : alpha("#fff", 0.2),
+                },
+                width: 56,
+                height: 56,
+              }}
+            >
+              <PeopleIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {isHost && (
+          <Tooltip title="Toggle waiting room">
+            <IconButton
+              onClick={() => setShowWaitingRoomPanel(!showWaitingRoomPanel)}
+              sx={{
+                bgcolor: showWaitingRoomPanel
+                  ? theme.palette.primary.main
+                  : alpha("#fff", 0.1),
+                color: "white",
+                "&:hover": {
+                  bgcolor: showWaitingRoomPanel
+                    ? theme.palette.primary.dark
+                    : alpha("#fff", 0.2),
+                },
+                width: 56,
+                height: 56,
+              }}
+            >
+              <PeopleIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        <Tooltip title="Toggle polls">
+          <IconButton
+            onClick={() => setShowPollsPanel(!showPollsPanel)}
+            sx={{
+              bgcolor: showPollsPanel
+                ? theme.palette.primary.main
+                : alpha("#fff", 0.1),
+              color: "white",
+              "&:hover": {
+                bgcolor: showPollsPanel
+                  ? theme.palette.primary.dark
+                  : alpha("#fff", 0.2),
+              },
+              width: 56,
+              height: 56,
+            }}
+          >
+            <PollIcon />
+          </IconButton>
         </Tooltip>
 
         <Tooltip title="End call">
